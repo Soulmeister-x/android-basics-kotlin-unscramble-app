@@ -16,7 +16,6 @@
 
 package com.example.android.unscramble.ui.game
 
-import android.nfc.Tag
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -26,6 +25,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import com.example.android.unscramble.R
 import com.example.android.unscramble.databinding.GameFragmentBinding
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Fragment where the game is played, contains the game logic.
@@ -35,11 +35,6 @@ class GameFragment : Fragment() {
     // attach ViewModel to the Fragment
     // create a reference (object) to the ViewModel inside the UI controller.
     private val viewModel: GameViewModel by viewModels()
-
-    private var score = 0
-    private var currentWordCount = 0
-    private var currentScrambledWord = "test"
-
 
     // Binding object instance with access to the views in the game_fragment.xml layout
     private lateinit var binding: GameFragmentBinding
@@ -54,7 +49,9 @@ class GameFragment : Fragment() {
     ): View {
         // Inflate the layout XML file and return a binding object instance
         binding = GameFragmentBinding.inflate(inflater, container, false)
-        Log.d(TAG, "$TAG (re-)created")
+        Log.d(TAG, "Word: ${viewModel.currentScrambledWord} " +
+                "Score: ${viewModel.score} " +
+                "WordCount: ${viewModel.currentWordCount}")
         return binding.root
     }
 
@@ -66,9 +63,7 @@ class GameFragment : Fragment() {
         binding.skip.setOnClickListener { onSkipWord() }
         // Update the UI
         updateNextWordOnScreen()
-        binding.score.text = getString(R.string.score, 0)
-        binding.wordCount.text = getString(
-                R.string.word_count, 0, MAX_NO_OF_WORDS)
+        updateScoreAndWordCount() // TODO: replace with livedata
     }
 
     override fun onDetach() {
@@ -81,7 +76,47 @@ class GameFragment : Fragment() {
     * Displays the next scrambled word.
     */
     private fun onSubmitWord() {
-        // TODO: implement logic
+        val playerWord = binding.textInputEditText.text.toString()
+
+        // guard clause
+        if (!viewModel.isPlayerWordCorrect(playerWord)) {
+            setErrorTextField(true)
+            return
+        }
+
+        // else
+        setErrorTextField(false)
+
+        if (viewModel.nextWord()) {
+            updateNextWordOnScreen()
+        }
+        else showFinalScoreDialog()
+        updateScoreAndWordCount() // TODO: replace with livedata
+    }
+
+    private fun updateScoreAndWordCount() {
+        // TODO: replace with livedata
+        // update wordcount and score on screen
+        binding.score.text = getString(R.string.score, viewModel.score)
+        binding.wordCount.text = getString(R.string.word_count, viewModel.currentWordCount, MAX_NO_OF_WORDS)
+
+    }
+
+    /*
+     * Creates and shows an AlertDialog with the final score.
+     */
+    private fun showFinalScoreDialog() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.congratulations))
+            .setMessage(getString(R.string.you_scored, viewModel.score))
+            .setCancelable(false)
+            .setNegativeButton(getString(R.string.exit)) { _,_ ->
+                exitGame()
+            }
+            .setPositiveButton(getString(R.string.play_again)) { _,_ ->
+                restartGame()
+            }
+            .show()
     }
 
     /*
@@ -89,23 +124,22 @@ class GameFragment : Fragment() {
      * Increases the word count.
      */
     private fun onSkipWord() {
-        // TODO: implement logic
+        if (viewModel.nextWord()) {
+            setErrorTextField(false)
+            updateNextWordOnScreen()
+        } else {
+            showFinalScoreDialog()
+        }
     }
 
-    /*
-     * Gets a random word for the list of words and shuffles the letters in it.
-     */
-    private fun getNextScrambledWord(): String {
-        val tempWord = allWordsList.random().toCharArray()
-        tempWord.shuffle()
-        return String(tempWord)
-    }
+
 
     /*
      * Re-initializes the data in the ViewModel and updates the views with the new data, to
      * restart the game.
      */
     private fun restartGame() {
+        viewModel.reinitializeData()
         setErrorTextField(false)
         updateNextWordOnScreen()
     }
