@@ -21,6 +21,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import com.example.android.unscramble.R
@@ -48,7 +49,9 @@ class GameFragment : Fragment() {
             savedInstanceState: Bundle?
     ): View {
         // Inflate the layout XML file and return a binding object instance
-        binding = GameFragmentBinding.inflate(inflater, container, false)
+        //viewBinding: binding = GameFragmentBinding.inflate(inflater, container, false)
+        //dataBinding:
+        binding = DataBindingUtil.inflate(inflater, R.layout.game_fragment, container, false)
         Log.d(TAG, "Word: ${viewModel.currentScrambledWord.value} " +
                 "Score: ${viewModel.score.value} " +
                 "WordCount: ${viewModel.currentWordCount.value}")
@@ -58,14 +61,20 @@ class GameFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Initialize the data-binding layout variables
+        binding.gameViewModel = viewModel
+        binding.maxNoOfWords = MAX_NO_OF_WORDS
+
+        // Specify the fragment view as the lifecycle owner of the binding.
+        // This is used so that the binding can observe LiveData updates
+        binding.lifecycleOwner = viewLifecycleOwner
+
         // Setup a click listener for the Submit and Skip buttons.
         binding.submit.setOnClickListener { onSubmitWord() }
         binding.skip.setOnClickListener { onSkipWord() }
-        // Update the UI
-        viewModel.currentScrambledWord.observe(viewLifecycleOwner
-        ) { newWord ->
-            binding.textViewUnscrambledWord.text = newWord
-        }
+        // Update the UI --> now data binding, so it's done in [game-fragment.xml]
+        // old view-binding observers: (this app currently uses both)
+        // TODO: https://developer.android.com/codelabs/basic-android-kotlin-training-livedata?continue=https%3A%2F%2Fdeveloper.android.com%2Fcourses%2Fpathways%2Fandroid-basics-kotlin-unit-3-pathway-3%23codelab-https%3A%2F%2Fdeveloper.android.com%2Fcodelabs%2Fbasic-android-kotlin-training-livedata#8
         viewModel.score.observe(viewLifecycleOwner) { newScore ->
             binding.score.text = getString(R.string.score, newScore)
         }
